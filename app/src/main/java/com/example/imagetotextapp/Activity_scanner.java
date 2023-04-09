@@ -7,6 +7,9 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.app.SearchManager;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -16,7 +19,6 @@ import android.graphics.Rect;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.View;
-import android.view.accessibility.CaptioningManager;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -31,15 +33,19 @@ import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 
+import java.util.ArrayList;
+
 public class Activity_scanner extends AppCompatActivity {
 
     //Widgets
     private ImageView captureImageView;
     private TextView resultTextView;
-    private Button snapButton, detectButton;
+    private Button snapButton, detectButton, copyButton, searchButton;
     private Bitmap imageBitmap;
 
     static final int REQUEST_IMAGE_CAPTURE = 1;
+
+    int snapButtonClicked = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,24 +56,67 @@ public class Activity_scanner extends AppCompatActivity {
         resultTextView = findViewById(R.id.IdTVDetectedText);
         snapButton = findViewById(R.id.idButtonSnap);
         detectButton = findViewById(R.id.idButtonDetect);
+        copyButton = findViewById(R.id.idButtonCopy);
+        searchButton = findViewById(R.id.idSearchButton);
 
         detectButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                DetectText();
+                if (imageBitmap != null) {
+                    DetectText();
+                } else {
+                    Toast.makeText(Activity_scanner.this, "Unable To Detect Text! Please Take A Photo First!", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
         snapButton.setOnClickListener(new View.OnClickListener() {
+
             @Override
             public void onClick(View view) {
                 if (CheckPermission()) {
                     CaptureImage();
+                    snapButtonClicked ++;
                 } else {
                     RequestPermission();
                 }
             }
         });
+
+        copyButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (resultTextView.getText().length() > 0) {
+                    Toast.makeText(Activity_scanner.this, "Text Copied!", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(Activity_scanner.this, "Unable To Copy Text!", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        searchButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (resultTextView.getText().length() > 0) {
+                    String textToSearch = resultTextView.getText().toString();
+                    Intent i = new Intent(Intent.ACTION_WEB_SEARCH);
+                    i.putExtra(SearchManager.QUERY, textToSearch);
+                    startActivity(i);
+                } else {
+                    Toast.makeText(Activity_scanner.this, "Please Copy Text First", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+    }
+
+    private void CopyText() {
+
+        String textToCopy = resultTextView.getText().toString();
+
+        ClipboardManager clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clipData = ClipData.newPlainText("label", textToCopy);
+        clipboardManager.setPrimaryClip(clipData);
 
     }
 
